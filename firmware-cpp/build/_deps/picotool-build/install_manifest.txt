@@ -1,7 +1,0 @@
-/Users/adamlipecz/Documents/GitHub/pico-automation-hat/firmware-cpp/build/_deps/picotool/picotool
-/Users/adamlipecz/Documents/GitHub/pico-automation-hat/firmware-cpp/build/_deps/picotool/picotoolTargets.cmake
-/Users/adamlipecz/Documents/GitHub/pico-automation-hat/firmware-cpp/build/_deps/picotool/picotoolTargets-release.cmake
-/Users/adamlipecz/Documents/GitHub/pico-automation-hat/firmware-cpp/build/_deps/picotool/picotoolConfig.cmake
-/Users/adamlipecz/Documents/GitHub/pico-automation-hat/firmware-cpp/build/_deps/picotool/picotoolConfigVersion.cmake
-/Users/adamlipecz/Documents/GitHub/pico-automation-hat/firmware-cpp/build/_deps/picotool/enc_bootloader.elf
-/Users/adamlipecz/Documents/GitHub/pico-automation-hat/firmware-cpp/build/_deps/picotool/enc_bootloader_mbedtls.elf
