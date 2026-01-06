@@ -32,7 +32,8 @@
         button.secondary { background: transparent; border: 1px solid #2f3336; color: #71767b; }
         .update-indicator { font-size: 11px; color: #71767b; text-align: right; margin-top: 8px; }
         .spinner { width: 18px; height: 18px; border: 3px solid rgba(231, 233, 234, 0.2); border-top-color: #f97316; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; }
-        .inline-status { font-size: 11px; color: #f97316; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; }
+        .inline-status { font-size: 11px; color: #f97316; display: none; align-items: center; gap: 6px; margin-top: 6px; }
+        .inline-status.show { display: inline-flex; }
         .inline-status.error { color: #ef4444; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
@@ -114,7 +115,7 @@
             if (!container) return;
             container.innerHTML = `<span class="spinner"></span><span>${message}</span>`;
             container.classList.remove('error');
-            container.style.display = 'inline-flex';
+            container.classList.add('show');
             actionTimer = setTimeout(() => {
                 container.classList.add('error');
                 container.innerHTML = "No response in 5s.";
@@ -127,7 +128,7 @@
             const container = document.querySelector(`#${targetId}-status`);
             if (container) {
                 container.textContent = "";
-                container.style.display = 'none';
+                container.classList.remove('show');
                 container.classList.remove('error');
             }
         }
@@ -138,7 +139,7 @@
             if (container) {
                 container.classList.add('error');
                 container.innerHTML = text;
-                container.style.display = 'inline-flex';
+                container.classList.add('show');
             }
             actionTimer = setTimeout(() => finishActionInline(targetId), 3000);
         }
