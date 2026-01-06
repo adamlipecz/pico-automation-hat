@@ -31,10 +31,9 @@
         button:hover { background: #ea580c; }
         button.secondary { background: transparent; border: 1px solid #2f3336; color: #71767b; }
         .update-indicator { font-size: 11px; color: #71767b; text-align: right; margin-top: 8px; }
-        .action-bar { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid #2f3336; background: #1a1f26; color: #e7e9ea; }
-        .action-bar.hidden { display: none; }
-        .action-bar.error { border-color: #ef4444; color: #ef4444; }
-        .spinner { width: 18px; height: 18px; border: 3px solid rgba(231, 233, 234, 0.2); border-top-color: #f97316; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .spinner { width: 18px; height: 18px; border: 3px solid rgba(231, 233, 234, 0.2); border-top-color: #f97316; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; }
+        .inline-status { font-size: 11px; color: #f97316; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; }
+        .inline-status.error { color: #ef4444; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -72,6 +71,7 @@
         <button class="secondary" onclick="resetAll()">
             Reset All Outputs
         </button>
+        <div class="inline-status" id="reset-all-status" style="display:none; margin-top:6px;"></div>
     </div>
 
     <script>
@@ -108,34 +108,39 @@
 
         let actionTimer = null;
 
-        function startAction(message) {
+        function startActionInline(targetId, message) {
             clearTimeout(actionTimer);
-            const bar = document.getElementById('action-bar');
-            const msg = document.getElementById('action-msg');
-            msg.textContent = message;
-            bar.classList.remove('hidden', 'error');
+            let container = document.querySelector(`#${targetId}-status`);
+            if (!container) return;
+            container.innerHTML = `<span class="spinner"></span><span>${message}</span>`;
+            container.classList.remove('error');
+            container.style.display = 'inline-flex';
             actionTimer = setTimeout(() => {
-                bar.classList.add('error');
-                msg.textContent = "No response in 5s. Please check connection.";
+                container.classList.add('error');
+                container.innerHTML = "No response in 5s.";
             }, 5000);
         }
 
-        function finishAction() {
+        function finishActionInline(targetId) {
             clearTimeout(actionTimer);
             actionTimer = null;
-            const bar = document.getElementById('action-bar');
-            bar.classList.add('hidden');
-            bar.classList.remove('error');
+            const container = document.querySelector(`#${targetId}-status`);
+            if (container) {
+                container.textContent = "";
+                container.style.display = 'none';
+                container.classList.remove('error');
+            }
         }
 
-        function failAction(text) {
+        function failActionInline(targetId, text) {
             clearTimeout(actionTimer);
-            const bar = document.getElementById('action-bar');
-            const msg = document.getElementById('action-msg');
-            bar.classList.remove('hidden');
-            bar.classList.add('error');
-            msg.textContent = text;
-            actionTimer = setTimeout(finishAction, 3000);
+            const container = document.querySelector(`#${targetId}-status`);
+            if (container) {
+                container.classList.add('error');
+                container.innerHTML = text;
+                container.style.display = 'inline-flex';
+            }
+            actionTimer = setTimeout(() => finishActionInline(targetId), 3000);
         }
 
         function toggleRelay(n) {
@@ -144,7 +149,8 @@
 
             const currentState = relays[0].classList.contains('on');
 
-            startAction(`Toggling relay ${n}...`);
+            const statusId = `relay-${n}-status`;
+            startActionInline(statusId, `Relay ${n}...`);
             fetch('/api/relay/' + n, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -152,12 +158,12 @@
             })
             .then(r => {
                 if (!r.ok) throw new Error('Relay toggle failed');
-                finishAction();
+                finishActionInline(statusId);
                 refresh();
             })
             .catch(err => {
                 console.error(err);
-                failAction("Relay command failed.");
+                failActionInline(statusId, "Relay command failed.");
             });
         }
 
@@ -168,7 +174,8 @@
             const currentValue = parseInt(outputs[0].dataset.value || '0');
             const newValue = currentValue > 0 ? 0 : 100;
 
-            startAction(`Toggling output ${n}...`);
+            const statusId = `output-${n}-status`;
+            startActionInline(statusId, `Output ${n}...`);
             fetch('/api/output/' + n, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -176,26 +183,26 @@
             })
             .then(r => {
                 if (!r.ok) throw new Error('Output toggle failed');
-                finishAction();
+                finishActionInline(statusId);
                 refresh();
             })
             .catch(err => {
                 console.error(err);
-                failAction("Output command failed.");
+                failActionInline(statusId, "Output command failed.");
             });
         }
 
         function resetAll() {
-            startAction("Resetting outputs...");
+            startActionInline("reset-all-status", "Resetting...");
             fetch('/api/reset', {method: 'POST'})
                 .then(r => {
                     if (!r.ok) throw new Error('Reset failed');
-                    finishAction();
+                    finishActionInline("reset-all-status");
                     refresh();
                 })
                 .catch(err => {
                     console.error(err);
-                    failAction("Reset failed.");
+                    failActionInline("reset-all-status", "Reset failed.");
                 });
         }
 
@@ -216,9 +223,10 @@
                         const state = data.relays[i];
                         const cls = state ? 'on' : 'off';
                         const val = state ? 'ON' : 'OFF';
-                        relaysDiv.innerHTML += `<div class="io-item clickable" onclick="toggleRelay(${i+1})">
+                    relaysDiv.innerHTML += `<div class="io-item clickable" onclick="toggleRelay(${i+1})">
                             <div class="io-label">R${i+1}</div>
                             <div class="io-value ${cls}" id="relay-${i+1}">${val}</div>
+                            <div class="inline-status" id="relay-${i+1}-status" style="display:none;"></div>
                         </div>`;
                     }
 
@@ -232,6 +240,7 @@
                         outputsDiv.innerHTML += `<div class="io-item clickable" onclick="toggleOutput(${i+1})">
                             <div class="io-label">O${i+1}</div>
                             <div class="io-value ${cls}" id="output-${i+1}" data-value="${value}">${val}</div>
+                            <div class="inline-status" id="output-${i+1}-status" style="display:none;"></div>
                         </div>`;
                     }
 
