@@ -38,11 +38,12 @@ Author: Generated for Pimoroni Automation 2040 W
 License: MIT
 """
 
-import serial
-import serial.tools.list_ports
 import json
 import time
-from typing import Optional, Union, Dict, List, Any
+from typing import Any, Optional, Union
+
+import serial
+import serial.tools.list_ports
 
 
 class Automation2040WError(Exception):
@@ -97,7 +98,7 @@ class Automation2040W:
             self.connect()
 
     @classmethod
-    def find_ports(cls) -> List[str]:
+    def find_ports(cls) -> list[str]:
         """
         Find all potential Automation 2040 W ports.
 
@@ -138,9 +139,7 @@ class Automation2040W:
             self.port = ports[0]
 
         try:
-            self.serial = serial.Serial(
-                self.port, baudrate=self.baudrate, timeout=self.timeout
-            )
+            self.serial = serial.Serial(self.port, baudrate=self.baudrate, timeout=self.timeout)
             # Wait for board to be ready
             time.sleep(0.5)
             # Flush any startup messages
@@ -149,15 +148,13 @@ class Automation2040W:
             # Test connection
             response = self._send_command("PING")
             if response != "PONG":
-                raise ConnectionError(
-                    f"Board did not respond correctly to PING. Got: {response}"
-                )
+                raise ConnectionError(f"Board did not respond correctly to PING. Got: {response}")
 
             # Get version
             self._version = self._send_command("VERSION")
 
         except serial.SerialException as e:
-            raise ConnectionError(f"Failed to open {self.port}: {e}")
+            raise ConnectionError(f"Failed to open {self.port}: {e}") from e
 
     def disconnect(self) -> None:
         """Disconnect from the board."""
@@ -311,7 +308,7 @@ class Automation2040W:
         response = self._send_command(f"BUTTON {button.upper()}?")
         return response == "PRESSED"
 
-    def status(self) -> Dict[str, Any]:
+    def status(self) -> dict[str, Any]:
         """
         Get all I/O states.
 

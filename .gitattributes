@@ -1,2 +1,28 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Shell scripts must use LF (for Linux/Raspberry Pi)
+*.sh text eol=lf
+
+# Python files should use LF
+*.py text eol=lf
+
+# MicroPython files must use LF (for Pico)
+firmware-serial/main.py text eol=lf
+firmware-wifi/*.py text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.txt text eol=lf
+
+# Config files
+*.json text eol=lf
+*.toml text eol=lf
+*.service text eol=lf
+Makefile text eol=lf
+
+# Binary files (be explicit)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary

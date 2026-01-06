@@ -1,0 +1,25 @@
+[Unit]
+Description=Automation 2040 W Host Service
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/pico-automation-hat/host
+ExecStart=/home/pi/pico-automation-hat/host/.venv/bin/python3 /home/pi/pico-automation-hat/host/automation_service.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Environment
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target

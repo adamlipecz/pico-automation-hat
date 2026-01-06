@@ -1,15 +1,15 @@
-# Pimoroni Automation 2040 W USB Control
+# Pimoroni Automation 2040 W Control System
 
-Control your [Pimoroni Automation 2040 W](https://shop.pimoroni.com/products/automation-2040-w) over USB from any computer using a simple text-based protocol.
+Complete control system for [Pimoroni Automation 2040 W](https://shop.pimoroni.com/products/automation-2040-w) with multiple deployment options.
 
 ## Features
 
-- **Simple text protocol** - Human-readable commands, easy to debug with any serial terminal
+- **USB Serial Control** - Host service (Raspberry Pi) with MQTT, REST API, and web interface
+- **WiFi Standalone** - Direct WiFi operation with built-in MQTT and web server
+- **Simple text protocol** - Human-readable commands, easy to debug
 - **Full peripheral control** - Relays, outputs (PWM), inputs, ADCs, button LEDs
-- **Python host library** - Easy integration into your automation projects
-- **Cross-platform** - Works on Windows, macOS, Linux
-- **No special drivers** - Uses standard USB CDC (virtual COM port)
-- **Two firmware options** - MicroPython or C++
+- **Python host library** - Easy integration into automation projects
+- **Modern tooling** - uv for packages, ruff for linting, systemd integration
 
 ## Hardware Support
 
@@ -18,63 +18,117 @@ Control your [Pimoroni Automation 2040 W](https://shop.pimoroni.com/products/aut
 | Automation 2040 W | 3 | 3 | 4 | 3 |
 | Automation 2040 W Mini | 1 | 2 | 2 | 3 |
 
-## Quick Start
+## Architecture Options
 
-### 1. Choose & Install Firmware
+### Option 1: USB Serial with Raspberry Pi Host (Recommended)
 
-You have two firmware options - both implement the same protocol and work with the host library:
-
-#### Option A: MicroPython (Easier)
-
-1. Download the [Pimoroni MicroPython firmware](https://github.com/pimoroni/pimoroni-pico/releases) (.uf2 file)
-2. Flash it to your board (hold BOOTSEL, connect USB, copy the .uf2 file)
-3. Copy `firmware-python/main.py` to the board using [Thonny](https://thonny.org/)
-
-#### Option B: C++ (Better performance)
-
-1. Install prerequisites (see `firmware-cpp/README.md`)
-2. Build the firmware:
-   ```bash
-   cd firmware-cpp
-   mkdir build && cd build
-   cmake ..
-   make -j4
-   ```
-3. Flash `automation2040w_usb.uf2` to the board (hold BOOTSEL, connect USB, copy file)
-
-### 2. Install Host Library
-
-```bash
-cd host
-pip install -r requirements.txt
+```
+Raspberry Pi 5 ──USB──> Automation 2040 W
+     │
+     ├─ MQTT Client (publishes/subscribes)
+     ├─ REST API (:8080)
+     └─ Web Interface
 ```
 
-### 3. Connect and Control
+**Best for:** Centralized control, advanced features, reliable MQTT
+
+### Option 2: WiFi Standalone
+
+```
+Automation 2040 W (WiFi + MQTT + HTTP server)
+```
+
+**Best for:** Simple deployments, no host computer needed
+
+## Quick Start
+
+### USB Serial Setup (Raspberry Pi)
+
+See **[SETUP.md](SETUP.md)** for detailed instructions.
+
+**Quick version:**
+
+1. Flash firmware to board:
+   ```bash
+   cd firmware-serial && ./deploy.sh
+   ```
+
+2. Deploy host service on Raspberry Pi:
+   ```bash
+   cd host && ./deploy.sh
+   ```
+
+3. Access web interface: `http://raspberry-pi-ip:8080`
+
+### WiFi Standalone Setup
+
+1. Edit WiFi config in `firmware-wifi/main.py`
+2. Deploy:
+   ```bash
+   cd firmware-wifi && ./deploy.sh
+   ```
+3. Access web interface at board's IP address
+
+## Development
+
+### Setup development environment:
+
+```bash
+# Install uv package manager (auto-installed by deploy.sh)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies
+make install
+
+# Lint code
+make lint
+
+# Format code
+make format
+```
+
+### VSCode Setup
+
+The project includes VSCode configuration for automatic linting and formatting:
+
+1. Install recommended extensions (VSCode will prompt):
+   - **Ruff** - Fast Python linter and formatter
+   - **Python** - Python language support
+   - **Pylance** - Python language server
+
+2. Ruff will automatically:
+   - Format code on save
+   - Organize imports
+   - Show linting errors in real-time
+   - Fix issues automatically where possible
+
+3. The Python interpreter is automatically set to `host/.venv/bin/python`
+
+### Using the Python Library
 
 ```python
 from automation2040w import Automation2040W
 
-# Auto-detect and connect
-board = Automation2040W()
+with Automation2040W() as board:
+    print(f"Firmware: {board.version}")
 
-# Control relays
-board.relay(1, True)   # Turn on
-board.relay(1, False)  # Turn off
+    # Control relays
+    board.relay(1, True)
 
-# PWM outputs (0-100%)
-board.output(1, 50)    # 50% duty cycle
+    # PWM outputs (0-100%)
+    board.output(1, 50)
 
-# Read inputs
-if board.input(1):
-    print("Input 1 is HIGH")
+    # Read inputs
+    if board.input(1):
+        print("Input 1 is HIGH")
 
-# Read ADC voltage
-voltage = board.adc(1)
-print(f"ADC 1: {voltage:.2f}V")
+    # Read ADC voltage
+    voltage = board.adc(1)
+    print(f"ADC 1: {voltage:.2f}V")
 
-# Get all states at once
-status = board.status()
-print(status)
+    # Get all states
+    status = board.status()
+    print(status)
 ```
 
 ## Protocol Reference
@@ -146,34 +200,45 @@ See the `host/examples/` directory:
 
 ```
 pico-automation-hat/
-├── firmware-python/
-│   └── main.py              # MicroPython firmware
-├── firmware-cpp/
-│   ├── src/
-│   │   └── main.cpp         # C++ firmware
-│   ├── CMakeLists.txt
-│   └── README.md            # Build instructions
-├── host/
-│   ├── automation2040w.py   # Python control library
-│   ├── requirements.txt     # Python dependencies
-│   └── examples/
-│       ├── basic_control.py
-│       ├── monitor.py
-│       └── sequencer.py
-└── README.md
+├── firmware-serial/          # USB serial firmware (INDEPENDENT)
+│   ├── main.py              # MicroPython implementation
+│   ├── deploy.sh            # Deployment script
+│   └── README.md            # Firmware-specific docs
+├── firmware-wifi/           # WiFi standalone firmware (INDEPENDENT)
+│   ├── main.py             # Controller with WiFi & MQTT
+│   ├── http_server.py      # Web server
+│   ├── deploy.sh           # Deployment script
+│   └── README.md            # Firmware-specific docs
+├── host/                    # Raspberry Pi host service (INDEPENDENT)
+│   ├── automation2040w.py  # Serial control library
+│   ├── automation_service.py  # Main service (MQTT/HTTP/systemd)
+│   ├── automation-service.service  # Systemd unit
+│   ├── deploy.sh           # Service installer
+│   ├── examples/           # Usage examples
+│   └── README.md            # Host-specific docs
+├── web-interface/           # Shared web UI (used by host & wifi)
+│   ├── index.html          # Single-page application
+│   └── README.md            # UI documentation
+├── pyproject.toml          # Project config (uv/ruff)
+├── Makefile                # Development commands
+├── README.md               # This file
+├── SETUP.md                # Detailed setup guide
+└── ARCHITECTURE.md         # Architecture comparison
 ```
 
-## Firmware Comparison
+**Note:** Each folder (firmware-serial, firmware-wifi, host) is **independent** with its own README. The web-interface folder is shared between host and firmware-wifi deployments.
 
-| Aspect | MicroPython | C++ |
-|--------|-------------|-----|
-| **Setup** | Easy - copy .py file | Requires SDK & build |
-| **Performance** | Good | Excellent |
-| **Response time** | ~1-5ms | <1ms |
-| **Customization** | Edit .py on device | Recompile & flash |
-| **Dependencies** | Pimoroni firmware | Pico SDK + Pimoroni libs |
+## Deployment Options Comparison
 
-Both firmwares use the **same protocol** and work with the **same host library**.
+| Aspect | USB Serial + Host | WiFi Standalone |
+|--------|------------------|-----------------|
+| **Host required** | Yes (Raspberry Pi) | No |
+| **MQTT reliability** | Excellent | Good |
+| **Auto-reconnect** | Yes (host handles) | Yes (board handles) |
+| **Web interface** | Flask (powerful) | MicroPython (basic) |
+| **Health monitoring** | REST API | Limited |
+| **Logging** | systemd/journald | Serial output |
+| **Best for** | Production | Simple setups |
 
 ## Why Not MODBUS?
 

@@ -256,12 +256,13 @@ def handle_http_request(server_socket, controller):
         
         # Send response in chunks (Pico can't send large data at once)
         data = response.encode()
-        header = f"HTTP/1.0 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {len(data)}\r\n\r\n".encode()
-        cl.send(header)
+        # Use Connection: close instead of Content-Length to avoid mismatch errors
+        header = f"HTTP/1.0 200 OK\r\nContent-Type: {content_type}\r\nConnection: close\r\n\r\n".encode()
+        cl.sendall(header)
         
-        # Send in 512-byte chunks
+        # Send in 512-byte chunks using sendall for reliability
         for i in range(0, len(data), 512):
-            cl.send(data[i:i+512])
+            cl.sendall(data[i:i+512])
         
     except Exception as e:
         import sys
@@ -371,6 +372,8 @@ def handle_config_update(controller, body):
     
     if changed:
         controller.save_config()
+        # Reconnect MQTT with new settings
+        controller.reconnect_mqtt()
         return """<!DOCTYPE html>
 <html>
 <head>

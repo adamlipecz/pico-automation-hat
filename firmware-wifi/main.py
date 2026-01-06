@@ -75,6 +75,7 @@ class AutomationController:
         # Timing
         self.last_mqtt_publish = 0
         self.last_input_poll = 0
+        self.last_mqtt_retry = 0
         
         # Load saved config if exists
         self.load_config()
@@ -133,6 +134,17 @@ class AutomationController:
             print("WiFi connection failed")
             self.board.switch_led(SWITCH_A, 0)
             return False
+    
+    def reconnect_mqtt(self):
+        """Disconnect and reconnect to MQTT with current config."""
+        if self.mqtt:
+            try:
+                self.mqtt.disconnect()
+            except:
+                pass
+            self.mqtt = None
+        self.mqtt_connected = False
+        return self.connect_mqtt()
     
     def connect_mqtt(self):
         """Connect to MQTT broker."""
@@ -305,6 +317,13 @@ class AutomationController:
                     self.mqtt.check_msg()
                 except:
                     self.mqtt_connected = False
+            
+            # Auto-reconnect MQTT every 15 seconds if disconnected
+            if not self.mqtt_connected and self.wlan.isconnected():
+                if time.ticks_diff(now, self.last_mqtt_retry) >= 15000:
+                    self.last_mqtt_retry = now
+                    print("MQTT disconnected, attempting reconnect...")
+                    self.connect_mqtt()
             
             # Periodic MQTT status publish
             if time.ticks_diff(now, self.last_mqtt_publish) >= config.MQTT_PUBLISH_INTERVAL:

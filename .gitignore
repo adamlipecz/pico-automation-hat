@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# VSCode - keep settings but ignore workspace files
+.vscode/*.code-workspace
+.vscode/launch.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Config files with secrets
+service_config.json
+config.json
+
+# MicroPython
+*.mpy
+
+# Temporary files
+*.tmp
+*.bak
+.pytest_cache/
+
+# Claude
+.claude
+
+# VSCode settings folder
+.vscode/
+
+# Ruff
+.ruff_cache
