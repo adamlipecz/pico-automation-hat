@@ -352,6 +352,9 @@ class AutomationService:
         except Exception as e:
             self.logger.error(f"MQTT setup failed: {e}")
             self.mqtt_connected = False
+            # Fail fast so systemd restarts the service
+            self.logger.error("Stopping service so systemd can restart after MQTT failure")
+            os._exit(1)
 
     def on_mqtt_connect(
         self,
@@ -376,6 +379,9 @@ class AutomationService:
         else:
             self.logger.error(f"MQTT connection failed with code {rc}")
             self.mqtt_connected = False
+            # Fail fast so systemd restarts the service
+            self.logger.error("Stopping service so systemd can restart after MQTT connect failure")
+            os._exit(1)
 
     def on_mqtt_disconnect(
         self,
