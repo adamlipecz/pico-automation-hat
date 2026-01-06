@@ -26,18 +26,29 @@ else
 fi
 
 # Find Astral Ty binary
+TY_CANDIDATES=(
+    "astral-ty"
+    "ty"
+    "$SCRIPT_DIR/automation-gateway/.venv/bin/astral-ty"
+    "$SCRIPT_DIR/automation-gateway/.venv/bin/ty"
+    "$HOME/.venv/bin/astral-ty"
+    "$HOME/.venv/bin/ty"
+)
+
 TY_BIN=""
-if command -v astral-ty &> /dev/null; then
-    TY_BIN="astral-ty"
-elif command -v ty &> /dev/null; then
-    TY_BIN="ty"
-elif [ -f "$SCRIPT_DIR/automation-gateway/.venv/bin/astral-ty" ]; then
-    TY_BIN="$SCRIPT_DIR/automation-gateway/.venv/bin/astral-ty"
-elif [ -f "$SCRIPT_DIR/automation-gateway/.venv/bin/ty" ]; then
-    TY_BIN="$SCRIPT_DIR/automation-gateway/.venv/bin/ty"
-else
+for cand in "${TY_CANDIDATES[@]}"; do
+    if command -v "$cand" &> /dev/null; then
+        TY_BIN="$cand"
+        break
+    elif [ -x "$cand" ]; then
+        TY_BIN="$cand"
+        break
+    fi
+done
+
+if [ -z "$TY_BIN" ]; then
     echo "⚠️  Astral Ty not found. Skipping type checking."
-    echo "   Install with: uv pip install astral-ty"
+    echo "   Install with: uv pip install ty"
 fi
 
 echo "Using ruff: $RUFF"
@@ -68,7 +79,7 @@ $RUFF check automation-firmware-serial/
 if [ -n "$TY_BIN" ]; then
     echo ""
     echo "🔍 Type checking with Astral Ty..."
-    $TY_BIN automation-gateway/lib automation-gateway/service || true  # Don't fail on type errors yet
+    $TY_BIN check automation-gateway/lib automation-gateway/service || true  # Don't fail on type errors yet
 fi
 
 echo ""

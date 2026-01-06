@@ -353,7 +353,14 @@ class AutomationService:
             self.logger.error(f"MQTT setup failed: {e}")
             self.mqtt_connected = False
 
-    def on_mqtt_connect(self, client: MQTTClient, userdata: Any, flags: dict[str, Any], rc: int) -> None:
+    def on_mqtt_connect(
+        self,
+        client: MQTTClient,
+        userdata: Any,
+        flags: dict[str, Any],
+        rc: int,
+        properties: Any | None = None,
+    ) -> None:
         """MQTT connection callback."""
         if rc == 0:
             self.logger.info("Connected to MQTT broker")
@@ -370,7 +377,13 @@ class AutomationService:
             self.logger.error(f"MQTT connection failed with code {rc}")
             self.mqtt_connected = False
 
-    def on_mqtt_disconnect(self, client: MQTTClient, userdata: Any, rc: int) -> None:
+    def on_mqtt_disconnect(
+        self,
+        client: MQTTClient,
+        userdata: Any,
+        rc: int,
+        properties: Any | None = None,
+    ) -> None:
         """MQTT disconnection callback."""
         self.logger.warning(f"Disconnected from MQTT broker (rc={rc})")
         self.mqtt_connected = False
