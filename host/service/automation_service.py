@@ -24,13 +24,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+# Add parent directory to path for lib imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import paho.mqtt.client as mqtt
-from automation2040w import Automation2040W
-from automation2040w import ConnectionError as BoardConnectionError
+from lib.automation2040w import Automation2040W
+from lib.automation2040w import ConnectionError as BoardConnectionError
 from flask import Flask, jsonify, request, send_from_directory
 
 # Configuration
-CONFIG_FILE = Path(__file__).parent / "service_config.json"
+CONFIG_FILE = Path(__file__).parent / "config.json"
 DEFAULT_CONFIG = {
     "serial": {
         "port": None,  # Auto-detect
@@ -67,9 +70,8 @@ class AutomationService:
         self.board: Optional[Automation2040W] = None
         self.mqtt_client: Optional[mqtt.Client] = None
 
-        # Setup Flask with absolute path to static files
-        static_dir = Path(__file__).parent.parent / "web-interface"
-        self.flask_app = Flask(__name__, static_folder=str(static_dir), static_url_path="/static")
+        # Setup Flask
+        self.flask_app = Flask(__name__)
 
         # State tracking
         self.board_connected = False
@@ -149,19 +151,22 @@ class AutomationService:
         @app.route("/")
         def index():
             """Serve main web interface."""
-            static_dir = Path(__file__).parent.parent / "web-interface"
+            static_dir = Path(__file__).parent.parent / "static"
             return send_from_directory(static_dir, "index.html")
 
         @app.route("/api/health")
         def health():
             """Health check endpoint."""
             uptime = (datetime.now() - self.start_time).total_seconds()
+            mqtt_config = self.config["mqtt"]
             return jsonify(
                 {
                     "status": "healthy" if self.running else "stopped",
                     "uptime_seconds": uptime,
                     "board_connected": self.board_connected,
                     "mqtt_connected": self.mqtt_connected,
+                    "mqtt_broker": f"{mqtt_config['broker']}:{mqtt_config['port']}",
+                    "mqtt_topic_prefix": mqtt_config["topic_prefix"],
                     "error_count": self.error_count,
                     "last_update": datetime.now().isoformat(),
                 }
@@ -179,12 +184,14 @@ class AutomationService:
         def control_relay(relay_num):
             """Control relay."""
             if not self.board_connected:
+                self.logger.warning(f"API: Relay {relay_num} control rejected - board not connected")
                 return jsonify({"error": "Board not connected"}), 503
 
             data = request.get_json() or {}
             state = data.get("state", True)
 
             try:
+                self.logger.info(f"API: Setting relay {relay_num} to {state}")
                 self.board.relay(relay_num, state)
                 return jsonify({"status": "ok", "relay": relay_num, "state": state})
             except Exception as e:
@@ -195,12 +202,14 @@ class AutomationService:
         def control_output(output_num):
             """Control output."""
             if not self.board_connected:
+                self.logger.warning(f"API: Output {output_num} control rejected - board not connected")
                 return jsonify({"error": "Board not connected"}), 503
 
             data = request.get_json() or {}
             value = data.get("value", 100)
 
             try:
+                self.logger.info(f"API: Setting output {output_num} to {value}%")
                 self.board.output(output_num, value)
                 return jsonify({"status": "ok", "output": output_num, "value": value})
             except Exception as e:
@@ -211,9 +220,11 @@ class AutomationService:
         def reset():
             """Reset all outputs."""
             if not self.board_connected:
+                self.logger.warning("API: Reset rejected - board not connected")
                 return jsonify({"error": "Board not connected"}), 503
 
             try:
+                self.logger.info("API: Resetting all outputs")
                 self.board.reset()
                 return jsonify({"status": "ok"})
             except Exception as e:
@@ -243,23 +254,29 @@ class AutomationService:
         """Disconnect from board."""
         if self.board:
             try:
+                self.logger.info("Disconnecting from board...")
                 self.board.disconnect()
-            except Exception:
-                pass
+                self.logger.info("Board disconnected")
+            except Exception as e:
+                self.logger.warning(f"Error during board disconnect: {e}")
             self.board = None
         self.board_connected = False
 
     def board_worker(self):
         """Board communication worker thread."""
         reconnect_interval = self.config["serial"]["reconnect_interval"]
+        self.logger.info("Board worker thread started")
 
         while self.running:
             if not self.board_connected:
+                self.logger.debug("Board not connected, attempting connection...")
                 if self.connect_board():
                     # Setup MQTT after successful board connection
                     if not self.mqtt_connected:
+                        self.logger.debug("Board connected, setting up MQTT...")
                         self.setup_mqtt()
                 else:
+                    self.logger.debug(f"Connection failed, retrying in {reconnect_interval}s")
                     time.sleep(reconnect_interval)
                     continue
 
@@ -267,14 +284,17 @@ class AutomationService:
                 # Read board status
                 status = self.board.status()
                 self.last_status = status
+                self.logger.debug(f"Board status: inputs={status.get('inputs', [])}, relays={status.get('relays', [])}")
 
                 # Publish to MQTT if connected
                 if self.mqtt_connected:
                     self.publish_status(status)
+                    self.logger.debug("Status published to MQTT")
 
             except Exception as e:
                 self.logger.error(f"Board communication error: {e}")
                 self.error_count += 1
+                self.logger.warning(f"Total errors: {self.error_count}, disconnecting board...")
                 self.disconnect_board()
                 time.sleep(reconnect_interval)
                 continue
@@ -381,6 +401,7 @@ class AutomationService:
     def publish_status(self, status: dict[str, Any]):
         """Publish status to MQTT."""
         if not self.mqtt_connected or not self.mqtt_client:
+            self.logger.debug("MQTT not connected, skipping publish")
             return
 
         try:
@@ -404,10 +425,17 @@ class AutomationService:
 
     def start(self):
         """Start the service."""
-        self.logger.info("Starting Automation Service")
+        self.logger.info("=" * 60)
+        self.logger.info("Starting Automation 2040 W Host Service")
+        self.logger.info("=" * 60)
+        self.logger.info(f"Serial port: {self.config['serial']['port'] or 'auto-detect'}")
+        self.logger.info(f"MQTT broker: {self.config['mqtt']['broker']}:{self.config['mqtt']['port']}")
+        self.logger.info(f"HTTP server: {self.config['http']['host']}:{self.config['http']['port']}")
+        self.logger.info("=" * 60)
         self.running = True
 
         # Start board worker thread
+        self.logger.info("Starting board worker thread...")
         self.board_thread = threading.Thread(target=self.board_worker, daemon=True)
         self.board_thread.start()
 
@@ -416,20 +444,28 @@ class AutomationService:
 
     def stop(self):
         """Stop the service."""
+        self.logger.info("=" * 60)
         self.logger.info("Stopping Automation Service")
+        self.logger.info("=" * 60)
         self.running = False
 
         # Stop MQTT
         if self.mqtt_client:
+            self.logger.info("Stopping MQTT client...")
             self.mqtt_client.loop_stop()
             self.mqtt_client.disconnect()
+            self.logger.info("MQTT client stopped")
 
         # Disconnect board
         self.disconnect_board()
 
         # Wait for threads
         if self.board_thread and self.board_thread.is_alive():
+            self.logger.info("Waiting for board thread to stop...")
             self.board_thread.join(timeout=5)
+            self.logger.info("Board thread stopped")
+
+        self.logger.info("Service stopped successfully")
 
     def signal_handler(self, signum, frame):
         """Handle shutdown signals."""

@@ -11,8 +11,8 @@ Demonstrates basic control of the Automation 2040 W:
 
 import sys
 import time
-sys.path.insert(0, '..')
-from automation2040w import Automation2040W
+sys.path.insert(0, '../..')
+from lib.automation2040w import Automation2040W
 
 def main():
     # Connect to board (auto-detect port)

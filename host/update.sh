@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 VENV_DIR="$SCRIPT_DIR/.venv"
 SERVICE_NAME="automation-service"
-SERVICE_FILE="$SCRIPT_DIR/$SERVICE_NAME.service"
+SERVICE_FILE="$SCRIPT_DIR/service/$SERVICE_NAME.service"
 SYSTEMD_DIR="/etc/systemd/system"
 
 echo "============================================"

@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 VENV_DIR="$SCRIPT_DIR/.venv"
 SERVICE_NAME="automation-service"
-SERVICE_FILE="$SCRIPT_DIR/$SERVICE_NAME.service"
+SERVICE_FILE="$SCRIPT_DIR/service/$SERVICE_NAME.service"
 SYSTEMD_DIR="/etc/systemd/system"
 LOG_DIR="/var/log"
 
@@ -86,7 +86,7 @@ sudo systemctl daemon-reload
 echo "✓ Service file installed"
 
 # Create default config if it doesn't exist
-CONFIG_FILE="$SCRIPT_DIR/service_config.json"
+CONFIG_FILE="$SCRIPT_DIR/service/config.json"
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "Creating default configuration..."
     cat > "$CONFIG_FILE" <<EOF

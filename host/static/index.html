@@ -40,6 +40,7 @@
 
         <div class="status" id="board-status"><span>Board: Loading...</span></div>
         <div class="status" id="mqtt-status"><span>MQTT: Loading...</span></div>
+        <div class="subtitle" id="mqtt-info" style="font-size: 12px; margin-top: 4px; margin-bottom: 24px;"></div>
 
         <div class="card">
             <h2>I/O Status</h2>
@@ -73,6 +74,7 @@
                 .then(data => {
                     const boardStatus = document.getElementById('board-status');
                     const mqttStatus = document.getElementById('mqtt-status');
+                    const mqttInfo = document.getElementById('mqtt-info');
 
                     if (data.board_connected) {
                         boardStatus.className = 'status ok';
@@ -85,9 +87,11 @@
                     if (data.mqtt_connected) {
                         mqttStatus.className = 'status ok';
                         mqttStatus.innerHTML = '<span>MQTT: Connected</span>';
+                        mqttInfo.textContent = `Broker: ${data.mqtt_broker} | Topic: ${data.mqtt_topic_prefix}/*`;
                     } else {
                         mqttStatus.className = 'status err';
                         mqttStatus.innerHTML = '<span>MQTT: Disconnected</span>';
+                        mqttInfo.textContent = `Broker: ${data.mqtt_broker} (disconnected)`;
                     }
                 })
                 .catch(err => console.error('Health check failed:', err));

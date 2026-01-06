@@ -9,8 +9,8 @@ Press Ctrl+C to exit.
 
 import sys
 import time
-sys.path.insert(0, '..')
-from automation2040w import Automation2040W
+sys.path.insert(0, '../..')
+from lib.automation2040w import Automation2040W
 
 def main():
     print("Connecting to Automation 2040 W...")

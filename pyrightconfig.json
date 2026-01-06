@@ -1,0 +1,19 @@
+{
+  "include": [
+    "host/lib",
+    "host/service"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/.*",
+    "host/.venv"
+  ],
+  "pythonVersion": "3.9",
+  "pythonPlatform": "Linux",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportUnusedImport": "warning",
+  "reportUnusedVariable": "warning",
+  "reportDuplicateImport": "error"
+}

@@ -11,8 +11,8 @@ import sys
 import time
 import argparse
 
-sys.path.insert(0, "..")
-from automation2040w import Automation2040W
+sys.path.insert(0, "../..")
+from lib.automation2040w import Automation2040W
 
 
 def main():
