@@ -109,22 +109,24 @@
 
         let actionTimer = null;
 
+        const actionTimers = {};
+
         function startActionInline(targetId, message) {
-            clearTimeout(actionTimer);
+            clearTimeout(actionTimers[targetId]);
             let container = document.querySelector(`#${targetId}-status`);
             if (!container) return;
             container.innerHTML = `<span class="spinner"></span><span>${message}</span>`;
             container.classList.remove('error');
             container.classList.add('show');
-            actionTimer = setTimeout(() => {
+            actionTimers[targetId] = setTimeout(() => {
                 container.classList.add('error');
                 container.innerHTML = "No response in 5s.";
             }, 5000);
         }
 
         function finishActionInline(targetId) {
-            clearTimeout(actionTimer);
-            actionTimer = null;
+            clearTimeout(actionTimers[targetId]);
+            delete actionTimers[targetId];
             const container = document.querySelector(`#${targetId}-status`);
             if (container) {
                 container.textContent = "";
@@ -134,14 +136,14 @@
         }
 
         function failActionInline(targetId, text) {
-            clearTimeout(actionTimer);
+            clearTimeout(actionTimers[targetId]);
             const container = document.querySelector(`#${targetId}-status`);
             if (container) {
                 container.classList.add('error');
                 container.innerHTML = text;
                 container.classList.add('show');
             }
-            actionTimer = setTimeout(() => finishActionInline(targetId), 3000);
+            actionTimers[targetId] = setTimeout(() => finishActionInline(targetId), 3000);
         }
 
         function toggleRelay(n) {
@@ -207,15 +209,25 @@
                 });
         }
 
+        function hideAllStatuses() {
+            document.querySelectorAll('.inline-status').forEach((el) => {
+                el.classList.remove('show', 'error');
+                el.style.display = 'none';
+                el.textContent = '';
+            });
+        }
+
         function refresh() {
             fetch('/api/status')
                 .then(r => r.json())
                 .then(data => {
                     if (data.error) {
                         console.error('Status error:', data.error);
-                        failAction("Status error: " + data.error);
+                        // keep UI as-is; no spinner
                         return;
                     }
+
+                    hideAllStatuses();
 
                     // Build relays
                     const relaysDiv = document.getElementById('relays');
