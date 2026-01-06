@@ -31,6 +31,11 @@
         button:hover { background: #ea580c; }
         button.secondary { background: transparent; border: 1px solid #2f3336; color: #71767b; }
         .update-indicator { font-size: 11px; color: #71767b; text-align: right; margin-top: 8px; }
+        .action-bar { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid #2f3336; background: #1a1f26; color: #e7e9ea; }
+        .action-bar.hidden { display: none; }
+        .action-bar.error { border-color: #ef4444; color: #ef4444; }
+        .spinner { width: 18px; height: 18px; border: 3px solid rgba(231, 233, 234, 0.2); border-top-color: #f97316; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -41,6 +46,10 @@
         <div class="status" id="board-status"><span>Board: Loading...</span></div>
         <div class="status" id="mqtt-status"><span>MQTT: Loading...</span></div>
         <div class="subtitle" id="mqtt-info" style="font-size: 12px; margin-top: 4px; margin-bottom: 24px;"></div>
+        <div id="action-bar" class="action-bar hidden">
+            <div class="spinner"></div>
+            <span id="action-msg">Working...</span>
+        </div>
 
         <div class="card">
             <h2>I/O Status</h2>
@@ -97,17 +106,59 @@
                 .catch(err => console.error('Health check failed:', err));
         }
 
+        let actionTimer = null;
+
+        function startAction(message) {
+            clearTimeout(actionTimer);
+            const bar = document.getElementById('action-bar');
+            const msg = document.getElementById('action-msg');
+            msg.textContent = message;
+            bar.classList.remove('hidden', 'error');
+            actionTimer = setTimeout(() => {
+                bar.classList.add('error');
+                msg.textContent = "No response in 5s. Please check connection.";
+            }, 5000);
+        }
+
+        function finishAction() {
+            clearTimeout(actionTimer);
+            actionTimer = null;
+            const bar = document.getElementById('action-bar');
+            bar.classList.add('hidden');
+            bar.classList.remove('error');
+        }
+
+        function failAction(text) {
+            clearTimeout(actionTimer);
+            const bar = document.getElementById('action-bar');
+            const msg = document.getElementById('action-msg');
+            bar.classList.remove('hidden');
+            bar.classList.add('error');
+            msg.textContent = text;
+            actionTimer = setTimeout(finishAction, 3000);
+        }
+
         function toggleRelay(n) {
             const relays = document.querySelectorAll('#relay-' + n);
             if (relays.length === 0) return;
 
             const currentState = relays[0].classList.contains('on');
 
+            startAction(`Toggling relay ${n}...`);
             fetch('/api/relay/' + n, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({state: !currentState})
-            }).then(() => refresh());
+            })
+            .then(r => {
+                if (!r.ok) throw new Error('Relay toggle failed');
+                finishAction();
+                refresh();
+            })
+            .catch(err => {
+                console.error(err);
+                failAction("Relay command failed.");
+            });
         }
 
         function toggleOutput(n) {
@@ -117,16 +168,35 @@
             const currentValue = parseInt(outputs[0].dataset.value || '0');
             const newValue = currentValue > 0 ? 0 : 100;
 
+            startAction(`Toggling output ${n}...`);
             fetch('/api/output/' + n, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({value: newValue})
-            }).then(() => refresh());
+            })
+            .then(r => {
+                if (!r.ok) throw new Error('Output toggle failed');
+                finishAction();
+                refresh();
+            })
+            .catch(err => {
+                console.error(err);
+                failAction("Output command failed.");
+            });
         }
 
         function resetAll() {
+            startAction("Resetting outputs...");
             fetch('/api/reset', {method: 'POST'})
-                .then(() => refresh());
+                .then(r => {
+                    if (!r.ok) throw new Error('Reset failed');
+                    finishAction();
+                    refresh();
+                })
+                .catch(err => {
+                    console.error(err);
+                    failAction("Reset failed.");
+                });
         }
 
         function refresh() {
@@ -135,6 +205,7 @@
                 .then(data => {
                     if (data.error) {
                         console.error('Status error:', data.error);
+                        failAction("Status error: " + data.error);
                         return;
                     }
 
