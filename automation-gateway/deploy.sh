@@ -87,9 +87,13 @@ echo "✓ Service file installed"
 
 # Create default config if it doesn't exist
 CONFIG_FILE="$SCRIPT_DIR/service/config.json"
+CONFIG_TEMPLATE="$SCRIPT_DIR/service/config.json.example"
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "Creating default configuration..."
-    cat > "$CONFIG_FILE" <<EOF
+    if [ -f "$CONFIG_TEMPLATE" ]; then
+        cp "$CONFIG_TEMPLATE" "$CONFIG_FILE"
+    else
+        cat > "$CONFIG_FILE" <<EOF
 {
   "serial": {
     "port": null,
@@ -100,7 +104,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
     "broker": "192.168.1.28",
     "port": 1883,
     "topic_prefix": "automation",
-    "client_id": "automation2040w-host",
+    "client_id": "automation2040w-gateway",
     "username": "",
     "password": "",
     "publish_interval": 1,
@@ -116,6 +120,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
   }
 }
 EOF
+    fi
     echo "✓ Default config created at $CONFIG_FILE"
     echo "  Edit this file to customize settings"
 fi

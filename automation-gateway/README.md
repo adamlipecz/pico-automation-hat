@@ -1,6 +1,6 @@
-# Host Service
+# Automation Gateway Service
 
-Raspberry Pi host service for Automation 2040 W control over USB serial.
+Raspberry Pi automation gateway service for Automation 2040 W control over USB serial.
 
 ## Overview
 
@@ -16,11 +16,11 @@ This Python service runs on a Raspberry Pi and provides:
 
 ```
 ┌─────────────────────────────────────┐
-│    Raspberry Pi 5 (Host)            │
+│    Raspberry Pi 5 (Gateway)         │
 │  ┌───────────────────────────────┐  │
 │  │  automation_service.py        │  │
 │  │  ├─ Flask (:8080)             │  │
-│  │  ├─ MQTT Client                │  │
+│  │  ├─ MQTT Client               │  │
 │  │  └─ Serial (USB)              │  │
 │  └───────────────────────────────┘  │
 └──────────────┬──────────────────────┘
@@ -28,7 +28,7 @@ This Python service runs on a Raspberry Pi and provides:
                ↓
     ┌──────────────────────┐
     │ Automation 2040 W    │
-    │ (firmware-serial)    │
+    │ (automation-firmware-serial)    │
     └──────────────────────┘
 ```
 
@@ -37,7 +37,7 @@ This Python service runs on a Raspberry Pi and provides:
 - `automation2040w.py` - Serial communication library
 - `automation_service.py` - Main service (MQTT + HTTP + systemd)
 - `automation-service.service` - systemd unit file
-- `service_config.json` - Configuration (created on first run)
+- `service/config.json` - Configuration (created on first run)
 - `deploy.sh` - Installation script
 - `requirements.txt` - Python dependencies
 - `examples/` - Usage examples
@@ -48,7 +48,7 @@ This Python service runs on a Raspberry Pi and provides:
 
 ```bash
 # On Raspberry Pi
-cd host
+cd automation-gateway
 ./deploy.sh
 ```
 
@@ -61,7 +61,7 @@ This will:
 
 ### Configuration
 
-Edit `service_config.json`:
+Edit `service/config.json`:
 
 ```json
 {
@@ -206,10 +206,10 @@ sudo usermod -a -G dialout $USER
 sudo journalctl -u automation-service -xe
 
 # Verify config
-cat service_config.json | python3 -m json.tool
+cat service/config.json | python3 -m json.tool
 
 # Test manually
-cd host
+cd automation-gateway
 source .venv/bin/activate
 python3 automation_service.py
 ```
@@ -237,7 +237,7 @@ make lint
 make format
 
 # Run directly
-cd host
+cd automation-gateway
 source .venv/bin/activate
 python3 automation_service.py
 ```

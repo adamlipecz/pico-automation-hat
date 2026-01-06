@@ -75,7 +75,7 @@ STATUS
 ### Installation
 
 ```bash
-cd firmware-serial
+cd automation-firmware-serial
 ./deploy.sh
 ```
 

@@ -1,4 +1,4 @@
-.PHONY: help install lint format check deploy-host deploy-serial deploy-wifi clean
+.PHONY: help install lint format check deploy-host deploy-gateway deploy-serial deploy-wifi clean
 
 help:
 	@echo "Pico Automation Hat - Development Commands"
@@ -7,7 +7,8 @@ help:
 	@echo "  make lint          - Run ruff linter"
 	@echo "  make format        - Format code with ruff"
 	@echo "  make check         - Run lint and format check"
-	@echo "  make deploy-host   - Deploy host service to Raspberry Pi"
+	@echo "  make deploy-gateway - Deploy automation gateway service to Raspberry Pi"
+	@echo "  make deploy-host   - Alias for deploy-gateway (legacy name)"
 	@echo "  make deploy-serial - Deploy serial firmware to board"
 	@echo "  make deploy-wifi   - Deploy WiFi firmware to board"
 	@echo "  make clean         - Clean build artifacts"
@@ -18,27 +19,29 @@ install:
 
 lint:
 	@echo "Running ruff linter..."
-	ruff check host/*.py
+	ruff check automation-gateway/*.py
 
 format:
 	@echo "Formatting code with ruff..."
-	ruff format host/*.py
+	ruff format automation-gateway/*.py
 
 check: lint
 	@echo "Running format check..."
-	ruff format --check host/*.py
+	ruff format --check automation-gateway/*.py
 
-deploy-host:
-	@echo "Deploying host service..."
-	cd host && ./deploy.sh
+deploy-host: deploy-gateway
+
+deploy-gateway:
+	@echo "Deploying automation gateway service..."
+	cd automation-gateway && ./deploy.sh
 
 deploy-serial:
 	@echo "Deploying serial firmware..."
-	cd firmware-serial && ./deploy.sh
+	cd automation-firmware-serial && ./deploy.sh
 
 deploy-wifi:
 	@echo "Deploying WiFi firmware..."
-	cd firmware-wifi && ./deploy.sh
+	cd automation-firmware-wifi && ./deploy.sh
 
 clean:
 	@echo "Cleaning build artifacts..."

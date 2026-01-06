@@ -1,12 +1,12 @@
 {
   "include": [
-    "host/lib",
-    "host/service"
+    "automation-gateway/lib",
+    "automation-gateway/service"
   ],
   "exclude": [
     "**/__pycache__",
     "**/.*",
-    "host/.venv"
+    "automation-gateway/.venv"
   ],
   "pythonVersion": "3.9",
   "pythonPlatform": "Linux",

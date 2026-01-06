@@ -1,24 +1,24 @@
 # Architecture Comparison
 
-## Web Interface: Host vs Firmware-WiFi
+## Web Interface: Gateway vs Automation-Firmware-WiFi
 
 ### Summary
 
-**YES** - Both use the **same web interface** ([firmware-wifi/index.html](firmware-wifi/index.html))
+**YES** - Both use the **same web interface** ([automation-firmware-wifi/index.html](automation-firmware-wifi/index.html))
 
 The HTML file is self-contained with inline CSS and JavaScript, and uses the same REST API endpoints in both deployments.
 
 ---
 
-## Deployment 1: USB Serial + Host (Raspberry Pi)
+## Deployment 1: USB Serial + Automation Gateway (Raspberry Pi)
 
 ```
 ┌─────────────────────────────────────────────────┐
-│         Raspberry Pi 5 (Host)                   │
+│         Raspberry Pi 5 (Gateway)                │
 │  ┌───────────────────────────────────────────┐  │
 │  │  automation_service.py                    │  │
 │  │  ├─ Flask HTTP Server (:8080)             │  │
-│  │  │  ├─ Serves: firmware-wifi/index.html   │  │
+│  │  │  ├─ Serves: automation-firmware-wifi/index.html   │  │
 │  │  │  └─ REST API endpoints                 │  │
 │  │  ├─ MQTT Client                           │  │
 │  │  │  ├─ Publishes: automation/status       │  │
@@ -31,7 +31,7 @@ The HTML file is self-contained with inline CSS and JavaScript, and uses the sam
                    ↓
         ┌──────────────────────┐
         │ Automation 2040 W    │
-        │ firmware-serial      │
+        │ automation-firmware-serial      │
         │  - Text protocol     │
         │  - I/O control       │
         └──────────────────────┘
@@ -48,7 +48,7 @@ The HTML file is self-contained with inline CSS and JavaScript, and uses the sam
 
 ```
 ┌────────────────────────────────────────┐
-│   Automation 2040 W (firmware-wifi)    │
+│   Automation 2040 W (automation-firmware-wifi)    │
 │  ┌──────────────────────────────────┐  │
 │  │  main.py                         │  │
 │  │  ├─ HTTP Server (MicroPython)    │  │
@@ -90,7 +90,7 @@ Both deployments provide identical API endpoints:
 
 ## Web Interface Features
 
-The single [index.html](firmware-wifi/index.html) file provides:
+The single [index.html](automation-firmware-wifi/index.html) file provides:
 
 - **Real-time I/O display**
   - Relays (clickable to toggle)
@@ -145,7 +145,7 @@ The single [index.html](firmware-wifi/index.html) file provides:
 ### WiFi Standalone Advantages
 
 1. **Simpler deployment**
-   - No host computer needed
+   - No gateway computer needed
    - Single device to manage
    - Lower total cost
 
@@ -155,7 +155,7 @@ The single [index.html](firmware-wifi/index.html) file provides:
    - Faster response times
 
 3. **Standalone operation**
-   - Works without host
+   - Works without gateway
    - Portable
    - Self-contained
 
@@ -163,7 +163,7 @@ The single [index.html](firmware-wifi/index.html) file provides:
 
 ## When to Use Each
 
-### Use USB Serial + Host when:
+### Use USB Serial + Automation Gateway when:
 - You need reliable MQTT integration
 - You want centralized logging and monitoring
 - You're deploying in production
@@ -172,7 +172,7 @@ The single [index.html](firmware-wifi/index.html) file provides:
 
 ### Use WiFi Standalone when:
 - You need a simple, standalone solution
-- No host computer is available
+- No gateway computer is available
 - Cost is a primary concern
 - The device needs to be portable
 - Basic MQTT and web control is sufficient
@@ -182,17 +182,17 @@ The single [index.html](firmware-wifi/index.html) file provides:
 ## File Locations
 
 ### Shared Web Interface
-- Source: [firmware-wifi/index.html](firmware-wifi/index.html)
+- Source: [automation-firmware-wifi/index.html](automation-firmware-wifi/index.html)
 - Used by: Both deployments
 - Self-contained: All CSS and JavaScript inline
 
-### Host Service
-- Service: [host/automation_service.py](host/automation_service.py)
-- Serves from: `firmware-wifi/index.html` (absolute path)
+-### Automation Gateway Service
+- Service: [automation-gateway/service/automation_service.py](automation-gateway/service/automation_service.py)
+- Serves from: `automation-firmware-wifi/index.html` (absolute path)
 - Port: 8080 (configurable)
 
 ### WiFi Firmware
-- Service: [firmware-wifi/http_server.py](firmware-wifi/http_server.py)
+- Service: [automation-firmware-wifi/http_server.py](automation-firmware-wifi/http_server.py)
 - Embeds: HTML template in Python string
 - Port: 80 (default HTTP)
 
@@ -202,6 +202,6 @@ The single [index.html](firmware-wifi/index.html) file provides:
 
 **Same user experience, different backends!**
 
-The web interface is identical in both deployments. The choice between them depends on your infrastructure, reliability requirements, and whether you need a host computer.
+The web interface is identical in both deployments. The choice between them depends on your infrastructure, reliability requirements, and whether you need a gateway computer.
 
 Both architectures use the same automation board, same protocol, and same web UI - they just differ in where the intelligence lives (Raspberry Pi vs Pico W).

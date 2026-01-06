@@ -56,9 +56,9 @@ make check
 
 ```
 pico-automation-hat/
-├── firmware-serial/      # USB serial firmware for the board
-├── firmware-wifi/        # WiFi firmware for standalone operation
-├── host/                 # Raspberry Pi host service
+├── automation-firmware-serial/      # USB serial firmware for the board
+├── automation-firmware-wifi/        # WiFi firmware for standalone operation
+├── automation-gateway/              # Raspberry Pi automation gateway service
 │   ├── automation2040w.py          # Serial communication library
 │   ├── automation_service.py       # Main service (MQTT/HTTP)
 │   └── examples/                   # Usage examples
@@ -148,21 +148,21 @@ Add MQTT reconnection logic to host service
 
 1. **Host Service:**
    ```bash
-   cd host
+   cd automation-gateway
    source .venv/bin/activate
    python3 automation_service.py
    ```
 
 2. **Serial Firmware:**
    ```bash
-   cd firmware-serial
+   cd automation-firmware-serial
    ./deploy.sh
    # Test with: mpremote repl
    ```
 
 3. **WiFi Firmware:**
    ```bash
-   cd firmware-wifi
+   cd automation-firmware-wifi
    ./deploy.sh
    # Check web interface at board IP
    ```
@@ -171,7 +171,7 @@ Add MQTT reconnection logic to host service
 
 Test the full stack:
 1. Deploy serial firmware to board
-2. Deploy host service to Raspberry Pi
+2. Deploy automation gateway service to Raspberry Pi
 3. Verify MQTT messages
 4. Test REST API endpoints
 5. Check web interface
@@ -217,7 +217,7 @@ Install recommended extensions when prompted:
 
 Make sure you're in the virtual environment:
 ```bash
-cd host
+cd automation-gateway
 source .venv/bin/activate
 ```
 

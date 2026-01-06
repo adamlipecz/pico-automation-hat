@@ -5,10 +5,10 @@
     "reconnect_interval": 5
   },
   "mqtt": {
-    "broker": "192.168.1.28",
+    "broker": "192.168.1.1",
     "port": 1883,
     "topic_prefix": "automation",
-    "client_id": "automation2040w-host",
+    "client_id": "automation2040w-gateway",
     "username": "",
     "password": "",
     "publish_interval": 1,

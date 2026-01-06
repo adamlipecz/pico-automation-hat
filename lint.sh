@@ -16,55 +16,59 @@ echo
 RUFF=""
 if command -v ruff &> /dev/null; then
     RUFF="ruff"
-elif [ -f "$SCRIPT_DIR/host/.venv/bin/ruff" ]; then
-    RUFF="$SCRIPT_DIR/host/.venv/bin/ruff"
+elif [ -f "$SCRIPT_DIR/automation-gateway/.venv/bin/ruff" ]; then
+    RUFF="$SCRIPT_DIR/automation-gateway/.venv/bin/ruff"
 else
     echo "❌ Ruff is not installed."
     echo "   Install with: pip install ruff"
-    echo "   Or install project dependencies: cd host && ./deploy.sh"
+    echo "   Or install project dependencies: cd automation-gateway && ./deploy.sh"
     exit 1
 fi
 
-# Find pyright binary
-PYRIGHT=""
-if command -v pyright &> /dev/null; then
-    PYRIGHT="pyright"
-elif command -v npx &> /dev/null; then
-    PYRIGHT="npx pyright"
+# Find Astral Ty binary
+TY_BIN=""
+if command -v astral-ty &> /dev/null; then
+    TY_BIN="astral-ty"
+elif command -v ty &> /dev/null; then
+    TY_BIN="ty"
+elif [ -f "$SCRIPT_DIR/automation-gateway/.venv/bin/astral-ty" ]; then
+    TY_BIN="$SCRIPT_DIR/automation-gateway/.venv/bin/astral-ty"
+elif [ -f "$SCRIPT_DIR/automation-gateway/.venv/bin/ty" ]; then
+    TY_BIN="$SCRIPT_DIR/automation-gateway/.venv/bin/ty"
 else
-    echo "⚠️  Pyright not found. Skipping type checking."
-    echo "   Install with: npm install -g pyright"
+    echo "⚠️  Astral Ty not found. Skipping type checking."
+    echo "   Install with: uv pip install astral-ty"
 fi
 
 echo "Using ruff: $RUFF"
-if [ -n "$PYRIGHT" ]; then
-    echo "Using pyright: $PYRIGHT"
+if [ -n "$TY_BIN" ]; then
+    echo "Using Astral Ty: $TY_BIN"
 fi
 echo ""
 
-# Lint host Python code
-echo "📋 Linting host/ ..."
-$RUFF check host/ --exclude host/.venv
+# Lint automation gateway Python code
+echo "📋 Linting automation-gateway/ ..."
+$RUFF check automation-gateway/ --exclude automation-gateway/.venv
 
 echo ""
 echo "🎨 Checking formatting..."
-$RUFF format --check host/ --exclude host/.venv
+$RUFF format --check automation-gateway/ --exclude automation-gateway/.venv
 
-# Lint firmware-wifi Python code
+# Lint automation-firmware-wifi Python code
 echo ""
-echo "📋 Linting firmware-wifi/ ..."
-$RUFF check firmware-wifi/ --exclude firmware-wifi/umqtt
+echo "📋 Linting automation-firmware-wifi/ ..."
+$RUFF check automation-firmware-wifi/ --exclude automation-firmware-wifi/umqtt
 
-# Lint firmware-serial Python code
+# Lint automation-firmware-serial Python code
 echo ""
-echo "📋 Linting firmware-serial/ ..."
-$RUFF check firmware-serial/
+echo "📋 Linting automation-firmware-serial/ ..."
+$RUFF check automation-firmware-serial/
 
 # Type checking
-if [ -n "$PYRIGHT" ]; then
+if [ -n "$TY_BIN" ]; then
     echo ""
-    echo "🔍 Type checking with pyright..."
-    $PYRIGHT host/lib host/service || true  # Don't fail on type errors yet
+    echo "🔍 Type checking with Astral Ty..."
+    $TY_BIN automation-gateway/lib automation-gateway/service || true  # Don't fail on type errors yet
 fi
 
 echo ""
@@ -73,6 +77,6 @@ echo "  ✅ Quality checks complete!"
 echo "============================================"
 echo
 echo "To auto-fix issues, run:"
-echo "  $RUFF check --fix host/ firmware-wifi/ firmware-serial/"
-echo "  $RUFF format host/ firmware-wifi/ firmware-serial/"
+echo "  $RUFF check --fix automation-gateway/ automation-firmware-wifi/ automation-firmware-serial/"
+echo "  $RUFF format automation-gateway/ automation-firmware-wifi/ automation-firmware-serial/"
 echo

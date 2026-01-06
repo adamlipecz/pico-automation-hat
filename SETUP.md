@@ -2,15 +2,15 @@
 
 This project provides multiple ways to control the Pimoroni Automation 2040 W board:
 
-1. **USB Serial Control** (via Raspberry Pi host)
-2. **WiFi Direct Control** (standalone, no host required)
+1. **USB Serial Control** (via Raspberry Pi automation gateway)
+2. **WiFi Direct Control** (standalone, no gateway required)
 
 ## Architecture Overview
 
 ### USB Serial Setup (Recommended for Raspberry Pi)
 ```
 ┌─────────────────────────────────────────────┐
-│         Raspberry Pi 5 (Host)               │
+│         Raspberry Pi 5 (Gateway)            │
 │  ┌─────────────────────────────────────┐   │
 │  │   automation_service.py             │   │
 │  │   - Serial → USB to Pico            │   │
@@ -24,7 +24,7 @@ This project provides multiple ways to control the Pimoroni Automation 2040 W bo
                    ↓
         ┌──────────────────────┐
         │ Automation 2040 W    │
-        │ firmware-serial      │
+        │ automation-firmware-serial      │
         │ - Command protocol   │
         │ - I/O control        │
         └──────────────────────┘
@@ -41,7 +41,7 @@ This project provides multiple ways to control the Pimoroni Automation 2040 W bo
 ```
         ┌──────────────────────┐
         │ Automation 2040 W    │
-        │ firmware-wifi        │
+        │ automation-firmware-wifi        │
         │ - WiFi client        │
         │ - MQTT client        │
         │ - HTTP server        │
@@ -50,16 +50,16 @@ This project provides multiple ways to control the Pimoroni Automation 2040 W bo
 ```
 
 **Benefits:**
-- No host computer needed
+- No gateway computer needed
 - Direct WiFi connectivity
 - Standalone operation
 - Good for remote/isolated deployments
 
 ---
 
-## Setup: USB Serial (Raspberry Pi Host)
+## Setup: USB Serial (Raspberry Pi Automation Gateway)
 
-### Step 1: Flash firmware-serial to Automation 2040 W
+### Step 1: Flash automation-firmware-serial to Automation 2040 W
 
 1. Connect the Automation 2040 W to your computer via USB
 2. Install mpremote:
@@ -69,19 +69,19 @@ This project provides multiple ways to control the Pimoroni Automation 2040 W bo
 
 3. Deploy the firmware:
    ```bash
-   cd firmware-serial
+   cd automation-firmware-serial
    ./deploy.sh
    ```
 
 4. Select your board type (standard or mini) when prompted
 
-### Step 2: Setup Raspberry Pi Host Service
+### Step 2: Setup Raspberry Pi Automation Gateway Service
 
 1. Clone this repo on your Raspberry Pi 5:
    ```bash
    cd ~
    git clone <repo-url> pico-automation-hat
-   cd pico-automation-hat/host
+   cd pico-automation-hat/automation-gateway
    ```
 
 2. Run the deploy script:
@@ -99,7 +99,7 @@ This project provides multiple ways to control the Pimoroni Automation 2040 W bo
 
 3. Edit configuration if needed:
    ```bash
-   nano service_config.json
+   nano service/config.json
    ```
 
    Key settings:
@@ -130,7 +130,7 @@ This project provides multiple ways to control the Pimoroni Automation 2040 W bo
 
 ### MQTT Topics (USB Serial Setup)
 
-The host service publishes and subscribes to these topics:
+The automation gateway service publishes and subscribes to these topics:
 
 **Subscribe (commands):**
 - `automation/relay/N` - Set relay N (1-3): "ON" or "OFF"
@@ -146,7 +146,7 @@ The host service publishes and subscribes to these topics:
 
 ### Step 1: Configure WiFi Settings
 
-1. Edit the WiFi credentials in [firmware-wifi/main.py](firmware-wifi/main.py):
+1. Edit the WiFi credentials in [automation-firmware-wifi/main.py](automation-firmware-wifi/main.py):
    ```python
    class config:
        WIFI_SSID = "your-wifi-name"
@@ -156,14 +156,14 @@ The host service publishes and subscribes to these topics:
        MQTT_TOPIC = "automation"
    ```
 
-   Or create a `config.py` file in firmware-wifi directory.
+   Or create a `config.py` file in the automation-firmware-wifi directory.
 
 ### Step 2: Deploy WiFi Firmware
 
 1. Connect the Automation 2040 W via USB
 2. Deploy:
    ```bash
-   cd firmware-wifi
+   cd automation-firmware-wifi
    ./deploy.sh
    ```
 
@@ -228,14 +228,14 @@ mpremote reset
 python3 -c "from automation2040w import Automation2040W; print(Automation2040W.find_ports())"
 ```
 
-### Testing the Host Python Library
+### Testing the Automation Gateway Python Library
 ```bash
 # Using make (recommended)
 make install  # Install with uv
-cd host/examples && python3 basic_control.py
+cd automation-gateway/examples && python3 basic_control.py
 
 # Or manually
-cd host
+cd automation-gateway
 source .venv/bin/activate
 python3 automation2040w.py
 ```
@@ -249,7 +249,7 @@ make format
 make lint
 
 # Deploy to devices
-make deploy-host     # Deploy host service
+make deploy-gateway  # Deploy automation gateway service
 make deploy-serial   # Deploy serial firmware
 make deploy-wifi     # Deploy WiFi firmware
 ```
@@ -262,14 +262,14 @@ make deploy-wifi     # Deploy WiFi firmware
 
 **Board not detected:**
 - Check USB cable is connected
-- Verify firmware-serial is installed: `mpremote ls` should show main.py
+- Verify automation-firmware-serial is installed: `mpremote ls` should show main.py
 - Check permissions: `sudo usermod -a -G dialout $USER` (then log out/in)
 - Try specifying port in config: `"serial.port": "/dev/ttyACM0"`
 
 **Service won't start:**
 - Check logs: `sudo journalctl -u automation-service -f`
-- Verify Python dependencies: `cd host && source .venv/bin/activate && pip list`
-- Check config syntax: `cat service_config.json | python3 -m json.tool`
+- Verify Python dependencies: `cd automation-gateway && source .venv/bin/activate && pip list`
+- Check config syntax: `cat service/config.json | python3 -m json.tool`
 
 **MQTT not connecting:**
 - Verify broker address: `ping 192.168.1.28`
@@ -279,7 +279,7 @@ make deploy-wifi     # Deploy WiFi firmware
 ### WiFi Direct Issues
 
 **Board not connecting to WiFi:**
-- Verify SSID and password in firmware-wifi/main.py
+- Verify SSID and password in automation-firmware-wifi/main.py
 - Check WiFi signal strength
 - View debug output: `mpremote repl`
 - LED A blinks = connecting, solid = connected
@@ -300,20 +300,20 @@ make deploy-wifi     # Deploy WiFi firmware
 
 ```
 pico-automation-hat/
-├── firmware-serial/          # USB serial control firmware
+├── automation-firmware-serial/          # USB serial control firmware
 │   ├── main.py              # Command protocol implementation
 │   └── deploy.sh            # Deployment script
 │
-├── firmware-wifi/           # WiFi standalone firmware
+├── automation-firmware-wifi/           # WiFi standalone firmware
 │   ├── main.py             # Main controller with WiFi & MQTT
 │   ├── http_server.py      # HTTP server and web interface
-│   ├── index.html          # Web UI (also used by host)
+│   ├── index.html          # Web UI (also used by automation gateway)
 │   └── deploy.sh           # Deployment script
 │
-├── host/                    # Raspberry Pi host service
+├── automation-gateway/                    # Raspberry Pi automation gateway service
 │   ├── automation2040w.py  # Python library for serial control
 │   ├── automation_service.py  # Main service (MQTT, HTTP, serial)
-│   ├── service_config.json    # Configuration file
+│   ├── service/config.json    # Configuration file
 │   ├── automation-service.service  # Systemd unit file
 │   ├── requirements.txt    # Python dependencies
 │   ├── deploy.sh          # Service deployment script
@@ -382,7 +382,7 @@ POST /api/reset
 
 ## Configuration Reference
 
-### service_config.json
+### service/config.json
 
 ```json
 {
@@ -395,7 +395,7 @@ POST /api/reset
     "broker": "192.168.1.28",
     "port": 1883,
     "topic_prefix": "automation",
-    "client_id": "automation2040w-host",
+    "client_id": "automation2040w-gateway",
     "username": "",            // Optional
     "password": "",            // Optional
     "publish_interval": 1,     // seconds
@@ -422,6 +422,6 @@ MIT License - See individual files for details.
 
 For issues and questions, please check:
 - Project documentation
-- Example scripts in host/examples/
+- Example scripts in automation-gateway/examples/
 - Serial output via `mpremote repl`
 - Service logs via `journalctl`

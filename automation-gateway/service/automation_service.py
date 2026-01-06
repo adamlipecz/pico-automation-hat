@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Automation 2040 W Host Service
-===============================
+Automation 2040 W Automation Gateway
+====================================
 
 System service that:
 - Communicates with Automation 2040 W over USB serial
 - Provides MQTT integration with auto-reconnect
-- Hosts web interface from firmware-wifi
+- Hosts web interface from automation-firmware-wifi
 - Provides REST API for health monitoring
 - Handles disconnects gracefully
 
@@ -28,6 +28,8 @@ from typing import Any, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import paho.mqtt.client as mqtt
+from paho.mqtt.client import Client as MQTTClient
+from paho.mqtt.client import MQTTMessage
 from lib.automation2040w import Automation2040W
 from lib.automation2040w import ConnectionError as BoardConnectionError
 from flask import Flask, jsonify, request, send_from_directory
@@ -41,10 +43,10 @@ DEFAULT_CONFIG = {
         "reconnect_interval": 5,
     },
     "mqtt": {
-        "broker": "192.168.1.1",
+        "broker": "192.168.1.28",
         "port": 1883,
         "topic_prefix": "automation",
-        "client_id": "automation2040w-host",
+        "client_id": "automation2040w-gateway",
         "username": "",
         "password": "",
         "publish_interval": 1,
@@ -68,7 +70,7 @@ class AutomationService:
 
         # Components
         self.board: Optional[Automation2040W] = None
-        self.mqtt_client: Optional[mqtt.Client] = None
+        self.mqtt_client: Optional[MQTTClient] = None
 
         # Setup Flask
         self.flask_app = Flask(__name__)
@@ -106,7 +108,7 @@ class AutomationService:
                         config[section] = values
                 return config
             except Exception as e:
-                print(f"Error loading config: {e}, using defaults")
+                logging.getLogger(__name__).warning("Error loading config %s: %s, using defaults", config_path, e)
 
         # Save default config
         config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -115,7 +117,7 @@ class AutomationService:
 
         return DEFAULT_CONFIG.copy()
 
-    def setup_logging(self):
+    def setup_logging(self) -> None:
         """Setup logging configuration."""
         log_config = self.config["logging"]
         level = getattr(logging, log_config["level"].upper(), logging.INFO)
@@ -144,7 +146,7 @@ class AutomationService:
         if file_handler:
             root_logger.addHandler(file_handler)
 
-    def setup_flask_routes(self):
+    def setup_flask_routes(self) -> None:
         """Setup Flask HTTP routes."""
         app = self.flask_app
 
@@ -187,6 +189,9 @@ class AutomationService:
                 self.logger.warning(f"API: Relay {relay_num} control rejected - board not connected")
                 return jsonify({"error": "Board not connected"}), 503
 
+            if relay_num < 1 or relay_num > 3:
+                return jsonify({"error": "Relay number must be between 1 and 3"}), 400
+
             data = request.get_json() or {}
             state = data.get("state", True)
 
@@ -205,13 +210,22 @@ class AutomationService:
                 self.logger.warning(f"API: Output {output_num} control rejected - board not connected")
                 return jsonify({"error": "Board not connected"}), 503
 
+            if output_num < 1 or output_num > 3:
+                return jsonify({"error": "Output number must be between 1 and 3"}), 400
+
             data = request.get_json() or {}
             value = data.get("value", 100)
 
             try:
-                self.logger.info(f"API: Setting output {output_num} to {value}%")
-                self.board.output(output_num, value)
-                return jsonify({"status": "ok", "output": output_num, "value": value})
+                try:
+                    percent = int(value)
+                except (TypeError, ValueError):
+                    return jsonify({"error": "Value must be an integer between 0 and 100"}), 400
+
+                percent = max(0, min(100, percent))
+                self.logger.info(f"API: Setting output {output_num} to {percent}%")
+                self.board.output(output_num, percent)
+                return jsonify({"status": "ok", "output": output_num, "value": percent})
             except Exception as e:
                 self.logger.error(f"Output control error: {e}")
                 return jsonify({"error": str(e)}), 500
@@ -231,7 +245,7 @@ class AutomationService:
                 self.logger.error(f"Reset error: {e}")
                 return jsonify({"error": str(e)}), 500
 
-    def connect_board(self):
+    def connect_board(self) -> bool:
         """Connect to the Automation 2040 W board."""
         serial_config = self.config["serial"]
 
@@ -250,7 +264,7 @@ class AutomationService:
             self.board_connected = False
             return False
 
-    def disconnect_board(self):
+    def disconnect_board(self) -> None:
         """Disconnect from board."""
         if self.board:
             try:
@@ -262,7 +276,7 @@ class AutomationService:
             self.board = None
         self.board_connected = False
 
-    def board_worker(self):
+    def board_worker(self) -> None:
         """Board communication worker thread."""
         reconnect_interval = self.config["serial"]["reconnect_interval"]
         self.logger.info("Board worker thread started")
@@ -302,12 +316,20 @@ class AutomationService:
             # Wait before next poll
             time.sleep(self.config["mqtt"]["publish_interval"])
 
-    def setup_mqtt(self):
+    def setup_mqtt(self) -> None:
         """Setup MQTT client and connect."""
         mqtt_config = self.config["mqtt"]
 
         try:
-            self.mqtt_client = mqtt.Client(client_id=mqtt_config["client_id"])
+            # Use latest callback API to avoid deprecation warnings
+            callback_api_version = getattr(mqtt, "CallbackAPIVersion", None)
+            if callback_api_version is not None:
+                self.mqtt_client = mqtt.Client(
+                    client_id=mqtt_config["client_id"],
+                    callback_api_version=callback_api_version.VERSION2,
+                )
+            else:
+                self.mqtt_client = mqtt.Client(client_id=mqtt_config["client_id"])
 
             # Set username/password if provided
             if mqtt_config["username"]:
@@ -331,7 +353,7 @@ class AutomationService:
             self.logger.error(f"MQTT setup failed: {e}")
             self.mqtt_connected = False
 
-    def on_mqtt_connect(self, client, userdata, flags, rc):
+    def on_mqtt_connect(self, client: MQTTClient, userdata: Any, flags: dict[str, Any], rc: int) -> None:
         """MQTT connection callback."""
         if rc == 0:
             self.logger.info("Connected to MQTT broker")
@@ -348,12 +370,12 @@ class AutomationService:
             self.logger.error(f"MQTT connection failed with code {rc}")
             self.mqtt_connected = False
 
-    def on_mqtt_disconnect(self, client, userdata, rc):
+    def on_mqtt_disconnect(self, client: MQTTClient, userdata: Any, rc: int) -> None:
         """MQTT disconnection callback."""
         self.logger.warning(f"Disconnected from MQTT broker (rc={rc})")
         self.mqtt_connected = False
 
-    def on_mqtt_message(self, client, userdata, msg):
+    def on_mqtt_message(self, client: MQTTClient, userdata: Any, msg: MQTTMessage) -> None:
         """MQTT message callback."""
         try:
             topic = msg.topic
@@ -369,6 +391,9 @@ class AutomationService:
             # Relay control
             if topic.startswith(f"{topic_prefix}/relay/"):
                 relay_num = int(topic.split("/")[-1])
+                if relay_num < 1 or relay_num > 3:
+                    self.logger.warning("MQTT: Relay number %s out of range", relay_num)
+                    return
                 state = payload in ("ON", "1", "TRUE")
                 self.board.relay(relay_num, state)
                 self.logger.info(f"MQTT: Set relay {relay_num} to {state}")
@@ -376,12 +401,20 @@ class AutomationService:
             # Output control
             elif topic.startswith(f"{topic_prefix}/output/"):
                 output_num = int(topic.split("/")[-1])
+                if output_num < 1 or output_num > 3:
+                    self.logger.warning("MQTT: Output number %s out of range", output_num)
+                    return
                 if payload in ("ON", "TRUE"):
                     value = 100
                 elif payload in ("OFF", "FALSE"):
                     value = 0
                 else:
-                    value = int(payload)
+                    try:
+                        value = int(payload)
+                    except ValueError:
+                        self.logger.warning("MQTT: Invalid payload for output %s: %s", output_num, payload)
+                        return
+                value = max(0, min(100, value))
                 self.board.output(output_num, value)
                 self.logger.info(f"MQTT: Set output {output_num} to {value}")
 
@@ -398,7 +431,7 @@ class AutomationService:
         except Exception as e:
             self.logger.error(f"Error handling MQTT message: {e}")
 
-    def publish_status(self, status: dict[str, Any]):
+    def publish_status(self, status: dict[str, Any]) -> None:
         """Publish status to MQTT."""
         if not self.mqtt_connected or not self.mqtt_client:
             self.logger.debug("MQTT not connected, skipping publish")
@@ -410,7 +443,7 @@ class AutomationService:
         except Exception as e:
             self.logger.error(f"MQTT publish error: {e}")
 
-    def run_flask(self):
+    def run_flask(self) -> None:
         """Run Flask web server."""
         http_config = self.config["http"]
         self.logger.info(f"Starting HTTP server on {http_config['host']}:{http_config['port']}")
@@ -423,7 +456,7 @@ class AutomationService:
             host=http_config["host"], port=http_config["port"], debug=False, threaded=True
         )
 
-    def start(self):
+    def start(self) -> None:
         """Start the service."""
         self.logger.info("=" * 60)
         self.logger.info("Starting Automation 2040 W Host Service")
@@ -442,7 +475,7 @@ class AutomationService:
         # Run Flask in main thread (blocks)
         self.run_flask()
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the service."""
         self.logger.info("=" * 60)
         self.logger.info("Stopping Automation Service")
@@ -467,14 +500,14 @@ class AutomationService:
 
         self.logger.info("Service stopped successfully")
 
-    def signal_handler(self, signum, frame):
+    def signal_handler(self, signum, frame) -> None:
         """Handle shutdown signals."""
         self.logger.info(f"Received signal {signum}")
         self.stop()
         sys.exit(0)
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     service = AutomationService()
     service.start()

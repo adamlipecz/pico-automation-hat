@@ -1,15 +1,23 @@
 # Pimoroni Automation 2040 W Control System
 
-Complete control system for [Pimoroni Automation 2040 W](https://shop.pimoroni.com/products/automation-2040-w) with multiple deployment options.
+Raspberry Pi + MicroPython automation stack for the [Pimoroni Automation 2040 W](https://shop.pimoroni.com/products/automation-2040-w). Ships with MQTT, REST, and a responsive web UI so you can drop it into home-automation, lab control, or industrial monitoring projects fast.
 
 ## Features
 
-- **USB Serial Control** - Host service (Raspberry Pi) with MQTT, REST API, and web interface
+- **USB Serial Control** - Automation gateway (Raspberry Pi) with MQTT, REST API, and web interface
 - **WiFi Standalone** - Direct WiFi operation with built-in MQTT and web server
 - **Simple text protocol** - Human-readable commands, easy to debug
 - **Full peripheral control** - Relays, outputs (PWM), inputs, ADCs, button LEDs
-- **Python host library** - Easy integration into automation projects
-- **Modern tooling** - uv for packages, ruff for linting, systemd integration
+- **Python gateway library** - Easy integration into automation projects
+- **Modern tooling** - uv for packages, ruff for linting, Astral Ty for type checking, systemd integration
+- **Cloud-ready** - MQTT-first design, REST health checks, and API endpoints suited for dashboards and IoT brokers
+
+## Use Cases
+
+- Raspberry Pi gateway for Home Assistant, Node-RED, or Grafana dashboards
+- MQTT bridge for lab equipment and sensor logging
+- Local-only industrial controls where offline operation matters
+- Fast prototyping for Pimoroni Automation 2040 W and Automation 2040 W Mini
 
 ## Hardware Support
 
@@ -20,7 +28,7 @@ Complete control system for [Pimoroni Automation 2040 W](https://shop.pimoroni.c
 
 ## Architecture Options
 
-### Option 1: USB Serial with Raspberry Pi Host (Recommended)
+### Option 1: USB Serial with Raspberry Pi Automation Gateway (Recommended)
 
 ```
 Raspberry Pi 5 ──USB──> Automation 2040 W
@@ -38,7 +46,7 @@ Raspberry Pi 5 ──USB──> Automation 2040 W
 Automation 2040 W (WiFi + MQTT + HTTP server)
 ```
 
-**Best for:** Simple deployments, no host computer needed
+**Best for:** Simple deployments, no gateway computer needed
 
 ## Quick Start
 
@@ -50,22 +58,22 @@ See **[SETUP.md](SETUP.md)** for detailed instructions.
 
 1. Flash firmware to board:
    ```bash
-   cd firmware-serial && ./deploy.sh
+   cd automation-firmware-serial && ./deploy.sh
    ```
 
-2. Deploy host service on Raspberry Pi:
+2. Deploy automation gateway service on Raspberry Pi:
    ```bash
-   cd host && ./deploy.sh
+   cd automation-gateway && ./deploy.sh
    ```
 
 3. Access web interface: `http://raspberry-pi-ip:8080`
 
 ### WiFi Standalone Setup
 
-1. Edit WiFi config in `firmware-wifi/main.py`
+1. Edit WiFi config in `automation-firmware-wifi/main.py`
 2. Deploy:
    ```bash
-   cd firmware-wifi && ./deploy.sh
+   cd automation-firmware-wifi && ./deploy.sh
    ```
 3. Access web interface at board's IP address
 
@@ -85,6 +93,9 @@ make lint
 
 # Format code
 make format
+
+# Type check everything with Astral Ty
+./typecheck.sh
 ```
 
 ### VSCode Setup
@@ -92,6 +103,7 @@ make format
 The project includes VSCode configuration for automatic linting and formatting:
 
 1. Install recommended extensions (VSCode will prompt):
+   - **Astral Ty** CLI available via `uv pip install astral-ty` (used by `typecheck.sh`)
    - **Ruff** - Fast Python linter and formatter
    - **Python** - Python language support
    - **Pylance** - Python language server
@@ -102,7 +114,7 @@ The project includes VSCode configuration for automatic linting and formatting:
    - Show linting errors in real-time
    - Fix issues automatically where possible
 
-3. The Python interpreter is automatically set to `host/.venv/bin/python`
+3. The Python interpreter is automatically set to `automation-gateway/.venv/bin/python`
 
 ### Using the Python Library
 
@@ -190,7 +202,7 @@ STATUS
 
 ## Examples
 
-See the `host/examples/` directory:
+See the `automation-gateway/examples/` directory:
 
 - **basic_control.py** - Simple demo of all features
 - **monitor.py** - Continuously display all I/O states
@@ -200,23 +212,23 @@ See the `host/examples/` directory:
 
 ```
 pico-automation-hat/
-├── firmware-serial/          # USB serial firmware (INDEPENDENT)
+├── automation-firmware-serial/          # USB serial firmware (INDEPENDENT)
 │   ├── main.py              # MicroPython implementation
 │   ├── deploy.sh            # Deployment script
 │   └── README.md            # Firmware-specific docs
-├── firmware-wifi/           # WiFi standalone firmware (INDEPENDENT)
+├── automation-firmware-wifi/           # WiFi standalone firmware (INDEPENDENT)
 │   ├── main.py             # Controller with WiFi & MQTT
 │   ├── http_server.py      # Web server
 │   ├── deploy.sh           # Deployment script
 │   └── README.md            # Firmware-specific docs
-├── host/                    # Raspberry Pi host service (INDEPENDENT)
+├── automation-gateway/                    # Raspberry Pi automation gateway service (INDEPENDENT)
 │   ├── automation2040w.py  # Serial control library
 │   ├── automation_service.py  # Main service (MQTT/HTTP/systemd)
 │   ├── automation-service.service  # Systemd unit
 │   ├── deploy.sh           # Service installer
 │   ├── examples/           # Usage examples
 │   └── README.md            # Host-specific docs
-├── web-interface/           # Shared web UI (used by host & wifi)
+├── web-interface/           # Shared web UI (used by gateway & wifi)
 │   ├── index.html          # Single-page application
 │   └── README.md            # UI documentation
 ├── pyproject.toml          # Project config (uv/ruff)
@@ -226,15 +238,15 @@ pico-automation-hat/
 └── ARCHITECTURE.md         # Architecture comparison
 ```
 
-**Note:** Each folder (firmware-serial, firmware-wifi, host) is **independent** with its own README. The web-interface folder is shared between host and firmware-wifi deployments.
+**Note:** Each folder (automation-firmware-serial, automation-firmware-wifi, automation-gateway) is **independent** with its own README. The web-interface folder is shared between gateway and WiFi deployments.
 
 ## Deployment Options Comparison
 
-| Aspect | USB Serial + Host | WiFi Standalone |
+| Aspect | USB Serial + Automation Gateway | WiFi Standalone |
 |--------|------------------|-----------------|
-| **Host required** | Yes (Raspberry Pi) | No |
+| **Gateway required** | Yes (Raspberry Pi) | No |
 | **MQTT reliability** | Excellent | Good |
-| **Auto-reconnect** | Yes (host handles) | Yes (board handles) |
+| **Auto-reconnect** | Yes (gateway handles) | Yes (board handles) |
 | **Web interface** | Flask (powerful) | MicroPython (basic) |
 | **Health monitoring** | REST API | Limited |
 | **Logging** | systemd/journald | Serial output |
