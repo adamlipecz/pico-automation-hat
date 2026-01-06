@@ -1,9 +1,10 @@
-.PHONY: help install lint format check deploy-host deploy-gateway deploy-serial deploy-wifi clean
+.PHONY: help install lint format check deploy-host deploy-gateway deploy-serial deploy-wifi clean setup
 
 help:
 	@echo "Pico Automation Hat - Development Commands"
 	@echo ""
 	@echo "  make install       - Install dependencies with uv"
+	@echo "  make setup         - Bootstrap venv and deps (uses uv)"
 	@echo "  make lint          - Run ruff linter"
 	@echo "  make format        - Format code with ruff"
 	@echo "  make check         - Run lint and format check"
@@ -16,6 +17,11 @@ help:
 install:
 	@echo "Installing dependencies with uv..."
 	uv pip install -e ".[dev]"
+
+setup:
+	@echo "Bootstrapping automation-gateway/.venv ..."
+	uv venv automation-gateway/.venv
+	cd automation-gateway && uv pip install -e ".[dev]"
 
 lint:
 	@echo "Running ruff linter..."

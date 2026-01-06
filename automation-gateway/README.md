@@ -1,6 +1,6 @@
-# Automation Gateway Service
+# Automation Gateway Service (Pimoroni Automation 2040 W)
 
-Raspberry Pi automation gateway service for Automation 2040 W control over USB serial.
+Raspberry Pi automation gateway for the Pimoroni Automation 2040 W: USB serial to MQTT/REST/web UI bridge with systemd integration.
 
 ## Overview
 
@@ -11,6 +11,8 @@ This Python service runs on a Raspberry Pi and provides:
 - Web interface hosting
 - systemd integration
 - Health monitoring
+
+See main project [README](../README.md) and [SETUP](../SETUP.md) for end-to-end guides and FAQs.
 
 ## Architecture
 
@@ -57,11 +59,11 @@ This will:
 2. Create virtual environment
 3. Install dependencies
 4. Configure systemd service
-5. Create default config
+5. Copy `service/config.json.example` to `service/config.json` if missing
 
 ### Configuration
 
-Edit `service/config.json`:
+Edit `service/config.json` (template in `service/config.json.example`):
 
 ```json
 {
@@ -100,6 +102,20 @@ sudo journalctl -u automation-service -f
 
 # Status
 sudo systemctl status automation-service
+```
+
+### Quick verification
+
+```bash
+# Health
+curl http://localhost:8080/api/health
+
+# Toggle relay 1
+curl -X POST -H "Content-Type: application/json" -d '{"state": true}' \
+  http://localhost:8080/api/relay/1
+
+# Watch MQTT status
+mosquitto_sub -h <broker-ip> -t automation/status
 ```
 
 ## REST API

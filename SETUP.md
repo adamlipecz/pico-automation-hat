@@ -1,4 +1,6 @@
-# Automation 2040 W Setup Guide
+# Pimoroni Automation 2040 W Setup Guide
+
+End-to-end setup for the Pimoroni Automation 2040 W using the automation gateway (Raspberry Pi) or WiFi firmware (MicroPython). See the main [README](README.md) for features and FAQs.
 
 This project provides multiple ways to control the Pimoroni Automation 2040 W board:
 
@@ -94,10 +96,10 @@ This project provides multiple ways to control the Pimoroni Automation 2040 W bo
    - Create a Python virtual environment with uv
    - Install dependencies (pyserial, flask, paho-mqtt)
    - Install systemd service
-   - Create default configuration
+   - Copy `service/config.json.example` to `service/config.json` if missing
    - Optionally enable and start the service
 
-3. Edit configuration if needed:
+3. Edit configuration if needed (source of truth: `service/config.json.example`):
    ```bash
    nano service/config.json
    ```
@@ -127,6 +129,20 @@ This project provides multiple ways to control the Pimoroni Automation 2040 W bo
 - **Web Interface:** http://raspberry-pi-ip:8080
 - **Health Check:** http://raspberry-pi-ip:8080/api/health
 - **Board Status:** http://raspberry-pi-ip:8080/api/status
+
+### Quick verification (gateway)
+
+```bash
+# Health
+curl http://raspberry-pi-ip:8080/api/health
+
+# Toggle relay 1
+curl -X POST -H "Content-Type: application/json" -d '{"state": true}' \
+  http://raspberry-pi-ip:8080/api/relay/1
+
+# MQTT status stream
+mosquitto_sub -h <broker-ip> -t automation/status
+```
 
 ### MQTT Topics (USB Serial Setup)
 

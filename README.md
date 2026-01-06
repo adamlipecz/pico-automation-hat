@@ -1,6 +1,6 @@
 # Pimoroni Automation 2040 W Control System
 
-Raspberry Pi + MicroPython automation stack for the [Pimoroni Automation 2040 W](https://shop.pimoroni.com/products/automation-2040-w). Ships with MQTT, REST, and a responsive web UI so you can drop it into home-automation, lab control, or industrial monitoring projects fast.
+Open-source automation gateway and firmware for the [Pimoroni Automation 2040 W](https://shop.pimoroni.com/products/automation-2040-w). Raspberry Pi + MicroPython stack with MQTT, REST API, and a responsive web UI for home automation, lab control, and IoT dashboards.
 
 ## Features
 
@@ -18,6 +18,7 @@ Raspberry Pi + MicroPython automation stack for the [Pimoroni Automation 2040 W]
 - MQTT bridge for lab equipment and sensor logging
 - Local-only industrial controls where offline operation matters
 - Fast prototyping for Pimoroni Automation 2040 W and Automation 2040 W Mini
+- Works with Pimoroni Automation 2040 W accessories and Pimoroni MicroPython firmware
 
 ## Hardware Support
 
@@ -77,6 +78,34 @@ See **[SETUP.md](SETUP.md)** for detailed instructions.
    ```
 3. Access web interface at board's IP address
 
+### Verify Your Install (gateway)
+
+```bash
+# Health check
+curl http://raspberry-pi-ip:8080/api/health
+
+# Toggle a relay via REST
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"state": true}' \
+  http://raspberry-pi-ip:8080/api/relay/1
+
+# Watch MQTT status
+mosquitto_sub -h <broker-ip> -t automation/status
+```
+
+### First MQTT commands
+
+```bash
+# Turn on relay 1
+mosquitto_pub -h <broker-ip> -t automation/relay/1 -m ON
+
+# Turn off output 2
+mosquitto_pub -h <broker-ip> -t automation/output/2 -m OFF
+
+# Ask for STATUS (gateway republishes)
+mosquitto_pub -h <broker-ip> -t automation/command -m STATUS
+```
+
 ## Development
 
 ### Setup development environment:
@@ -84,6 +113,11 @@ See **[SETUP.md](SETUP.md)** for detailed instructions.
 ```bash
 # Install uv package manager (auto-installed by deploy.sh)
 curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# One-step bootstrap (venv + deps)
+./bootstrap.sh
+# or
+make setup
 
 # Install dependencies
 make install
@@ -207,6 +241,7 @@ See the `automation-gateway/examples/` directory:
 - **basic_control.py** - Simple demo of all features
 - **monitor.py** - Continuously display all I/O states
 - **sequencer.py** - Cycle through relays in sequence
+- **MQTT quickstart.md** (TODO) - Short recipe for common MQTT commands
 
 ## Project Structure
 
@@ -251,6 +286,15 @@ pico-automation-hat/
 | **Health monitoring** | REST API | Limited |
 | **Logging** | systemd/journald | Serial output |
 | **Best for** | Production | Simple setups |
+
+## FAQ / How-To
+
+- **How do I control relays via MQTT?** Publish `ON`/`OFF` to `automation/relay/<n>`. Example: `mosquitto_pub -h <broker> -t automation/relay/1 -m ON`.
+- **How do I toggle via REST?** `curl -X POST -H "Content-Type: application/json" -d '{"state": true}' http://raspberry-pi-ip:8080/api/relay/1`.
+- **Where is the config file?** `automation-gateway/service/config.json` (copied from `config.json.example` by deploy). Edit broker, topics, HTTP port, logging.
+- **How do I check health?** `curl http://raspberry-pi-ip:8080/api/health` for uptime, MQTT/board status, error counts.
+- **What if MQTT is disconnected?** The web UI shows a red status; check broker address/creds, then `sudo systemctl restart automation-service`.
+- **How do I run type checks and lint?** `./lint.sh` (ruff + Ty) and `./typecheck.sh` (Ty across projects). Ensure `automation-gateway/.venv` has deps installed.
 
 ## Why Not MODBUS?
 

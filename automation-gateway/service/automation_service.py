@@ -381,11 +381,12 @@ class AutomationService:
         self,
         client: MQTTClient,
         userdata: Any,
-        rc: int,
+        flags: dict[str, Any],
+        reason_code: int,
         properties: Any | None = None,
     ) -> None:
         """MQTT disconnection callback."""
-        self.logger.warning(f"Disconnected from MQTT broker (rc={rc})")
+        self.logger.warning(f"Disconnected from MQTT broker (rc={reason_code})")
         self.mqtt_connected = False
 
     def on_mqtt_message(self, client: MQTTClient, userdata: Any, msg: MQTTMessage) -> None:
@@ -477,6 +478,7 @@ class AutomationService:
         self.logger.info(f"Serial port: {self.config['serial']['port'] or 'auto-detect'}")
         self.logger.info(f"MQTT broker: {self.config['mqtt']['broker']}:{self.config['mqtt']['port']}")
         self.logger.info(f"HTTP server: {self.config['http']['host']}:{self.config['http']['port']}")
+        self.logger.info(f"Health endpoint: http://{self.config['http']['host']}:{self.config['http']['port']}/api/health")
         self.logger.info("=" * 60)
         self.running = True
 
